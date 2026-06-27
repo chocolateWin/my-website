@@ -1,0 +1,701 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>雨的逆流 · 设计手记</title>
+    
+    <style>
+        body, html {
+            margin: 0; padding: 0;
+            width: 100%; height: auto;
+            font-family: 'Georgia', 'Times New Roman', serif;
+            background-color: #F2F4F6; 
+            color: #666666; 
+            font-weight: 300;
+            overflow-x: hidden;
+            scroll-behavior: smooth;
+        }
+
+        .navbar {
+            position: fixed;
+            top: 30px;
+            left: 0;
+            width: 100%;
+            padding: 0 60px;
+            box-sizing: border-box;
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            letter-spacing: 2px;
+            color: #999999;
+            z-index: 1000;
+        }
+        .nav-group {
+            display: flex;
+            gap: 40px;
+            pointer-events: auto;
+        }
+        .nav-item {
+            cursor: pointer;
+            transition: color 0.3s ease;
+        }
+        .nav-item:hover, .nav-item.active {
+            color: #444444;
+        }
+
+        #p5canvas {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 85vw;
+            max-width: 900px;
+            aspect-ratio: 16 / 9;
+            z-index: 1;
+            border-radius: 4px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.02);
+        }
+        #p5canvas canvas {
+            display: block;
+            width: 100% !important;
+            height: 100% !important;
+            border-radius: 4px;
+        }
+
+        .section {
+            min-height: 100vh;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            position: relative;
+            z-index: 2;
+        }
+
+        /* 首页文字 */
+        #home-screen .section-content {
+            padding-top: calc(50vh + 25vw);
+            box-sizing: border-box;
+            text-align: center;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start; 
+        }
+        #home-screen .section-content h1 { 
+            font-size: 20px; font-weight: normal; margin: 0; color: #444444; letter-spacing: 1px; 
+        }
+        #home-screen .section-content p { 
+            font-size: 12px; margin: 10px 0 0 0; color: #888888; letter-spacing: 1.5px; 
+        }
+
+        .section-content {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            min-height: 70vh;
+            padding-top: 80px;
+            padding-bottom: 40px;
+            box-sizing: border-box;
+            text-align: center;
+        }
+        
+        .footer-cta {
+            position: fixed;
+            bottom: 30px;
+            width: 100%;
+            text-align: center;
+            font-size: 11px;
+            letter-spacing: 4px;
+            color: #cccccc;
+            pointer-events: none;
+            z-index: 1000;
+        }
+
+        .work-content-body, .experience-content-body, .about-content-body {
+            width: 100%; background-color: #F2F4F6; position: relative; z-index: 5; 
+            padding: 0 60px 160px 60px; box-sizing: border-box;
+            box-shadow: 0 -20px 40px rgba(242, 244, 246, 0.9);
+        }
+        
+        .work-group { margin-bottom: 120px; }
+        .group-header { margin-bottom: 30px; display: flex; align-items: baseline; justify-content: space-between; }
+        .group-title { font-size: 14px; font-weight: 400; color: #444; margin: 0; letter-spacing: 1px; }
+        .group-tag { font-family: "Courier New", Courier, monospace; font-size: 11px; color: #999; }
+        
+        .horizontal-gallery { display: flex; gap: 30px; overflow-x: auto; padding: 0 0 30px 0; scroll-snap-type: x mandatory; scrollbar-width: none; }
+        .horizontal-gallery::-webkit-scrollbar { display: none; }
+        .gallery-item { flex-shrink: 0; scroll-snap-align: start; }
+        .gallery-item.large { width: 500px; aspect-ratio: 16/10; }
+        .gallery-item.medium { width: 380px; aspect-ratio: 4/3; }
+        .img-box { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; background: #e5e8eb; border-radius: 2px; overflow: hidden; }
+        .img-box img { width: 100%; height: 100%; object-fit: contain; }
+        
+        /* ------- 核心修复：强制手机占位符完全等高 ------- */
+        .gallery-item.phone { 
+            width: 180px; /* 固定整个手机卡片的宽度 */
+            display: flex; 
+            flex-direction: column; 
+            align-items: flex-start;
+        }
+        .phone-pure-screen { 
+            width: 100%; 
+            height: 380px; /* 强制固定高度，解决高低不一 */
+            background: #e5e8eb; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            color: #888; 
+            font-size: 11px; 
+            border-radius: 2px;
+            flex-shrink: 0; /* 防止被 flex 拉伸 */
+        }
+        .phone-desc { 
+            font-size: 11px; 
+            color: #888; 
+            margin-top: 12px; 
+            text-align: left; 
+            letter-spacing: 0.5px; 
+        }
+        /* ------- 修复结束 ------- */
+
+        .gallery-link-wrapper { text-align: center; margin-top: 30px; }
+        .gallery-link {
+            font-family: 'Georgia', serif; font-size: 12px; color: #888;
+            text-decoration: none; border: 1px solid #ddd; padding: 8px 28px;
+            border-radius: 50px; transition: all 0.3s ease; letter-spacing: 1px;
+            display: inline-block;
+        }
+        .gallery-link:hover { color: #444; border-color: #999; background: #ffffff; }
+
+        /* 左图右文布局 */
+        .product-layout { display: flex; flex-wrap: wrap; gap: 40px; align-items: stretch; }
+        .product-layout .horizontal-gallery { flex: 2; min-width: 500px; padding-bottom: 0; margin: 0; }
+        .product-layout .story-wrapper {
+            flex: 1; min-width: 260px; margin: 0; padding: 20px 25px;
+            border-radius: 2px; background: rgba(242, 244, 246, 0.8); 
+            border: 1px solid rgba(135, 206, 250, 0.15);
+            box-sizing: border-box;
+        }
+        
+        .product-layout .story-wrapper p {
+            font-size: 13px; color: #444; line-height: 2.2em; margin: 0; padding: 0;
+            background-image: linear-gradient(to bottom, transparent 95%, rgba(135, 206, 250, 0.4) 95%);
+            background-size: 100% 2.2em; background-position: bottom; letter-spacing: 0.5px;
+        }
+
+        /* 时间轴 */
+        .timeline-container { max-width: 900px; margin: 0 auto; position: relative; padding-left: 20px; }
+        .timeline-container::before {
+            content: '';
+            position: absolute;
+            left: 140px;
+            top: 15px;
+            bottom: 15px;
+            width: 1px;
+            border-left: 1px dashed rgba(135, 206, 250, 0.7);
+        }
+        .timeline-item { position: relative; margin-bottom: 70px; }
+        .timeline-item::after { content: ""; display: table; clear: both; }
+        .timeline-time { width: 110px; float: left; font-family: "Courier New", Courier, monospace; font-size: 12px; color: #999; letter-spacing: 0.5px; padding-top: 4px; }
+        .timeline-dot {
+            position: absolute;
+            left: 137px;
+            top: 7px;
+            width: 7px;
+            height: 7px;
+            background-color: #F2F4F6;
+            border: 1px solid rgba(135, 206, 250, 0.9);
+            border-radius: 50%;
+            z-index: 6;
+        }
+        .timeline-content { margin-left: 180px; text-align: left; }
+        .timeline-header { margin-bottom: 15px; }
+        .company-name { font-size: 15px; font-weight: 400; color: #444; margin: 0 0 4px 0; letter-spacing: 0.5px; }
+        .role-title { font-size: 12px; color: #777; margin: 0; letter-spacing: 0.5px; }
+        .job-details { list-style: none; padding: 0; margin: 0; }
+        .job-details li { font-size: 12px; color: #666; line-height: 1.8; margin-bottom: 8px; position: relative; padding-left: 12px; letter-spacing: 0.5px; }
+        .job-details li::before {
+            content: "—";
+            position: absolute;
+            left: 0;
+            color: rgba(135, 206, 250, 0.8);
+            font-size: 10px;
+        }
+
+        #about-section { min-height: auto; padding: 0; background-color: transparent; }
+        .about-content-body {
+            width: 100%; background-color: #F0F8FF; position: relative; z-index: 5;
+            padding: 80px 60px 120px 60px; box-sizing: border-box;
+            box-shadow: 0 -20px 40px rgba(242, 244, 246, 0.9);
+        }
+        .envelope-container { max-width: 680px; margin: 0 auto; color: #3A4B5A; position: relative; }
+        .envelope-container h2 { font-family: 'Georgia', serif; font-size: 24px; font-weight: normal; color: #1C2C3A; margin-bottom: 40px; letter-spacing: 1.5px; text-align: left; }
+        .envelope-container p { font-size: 15px; line-height: 2.0; letter-spacing: 0.5px; margin-bottom: 30px; text-align: left; }
+        .envelope-container .highlight { color: #5B87A8; }
+        .letter-divider { width: 100%; height: 1px; background: rgba(58, 75, 90, 0.15); margin: 50px 0 40px 0; }
+        .letter-signature { display: flex; flex-direction: column; align-items: flex-end; margin-top: 20px; }
+        .letter-signature p { font-size: 13px; line-height: 1.8; margin: 0; color: #3A4B5A; }
+        .sticker-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; }
+        .sticker { position: absolute; background: #FFFFFF; border: 1px solid rgba(0,0,0,0.05); padding: 6px; border-radius: 50%; width: 60px; height: 60px; object-fit: cover; box-shadow: 0 4px 8px rgba(0,0,0,0.03); display: flex; justify-content: center; align-items: center; font-size: 32px; transform: rotate(0deg); }
+        .sticker-1 { top: 30px; right: -40px; transform: rotate(-12deg); }
+        .sticker-2 { bottom: 40px; left: -50px; transform: rotate(8deg); }
+
+        @media (max-width: 768px) {
+            .work-content-body, .experience-content-body, .about-content-body { padding: 0 20px 80px 20px; }
+            .timeline-time { float: none; width: auto; margin-bottom: 5px; }
+            .timeline-dot { left: 2px; }
+            .timeline-content { margin-left: 0; padding-top: 15px; }
+            .timeline-container::before { left: 5px; }
+            .gallery-item.large { width: 280px; }
+            #home-screen .section-content { padding-top: 60vh; }
+            .product-layout .horizontal-gallery { min-width: 100%; }
+            .gallery-item.phone { width: 140px; } /* 移动端缩小 */
+            .phone-pure-screen { height: 280px; } /* 移动端等比缩小 */
+        }
+    </style>
+</head>
+<body>
+
+    <!-- 导航 -->
+    <div class="navbar">
+        <div class="nav-left">Winnie's Sketchbook</div>
+        <div class="nav-group">
+            <div class="nav-item active" onclick="switchContent('home')">Home</div>
+            <div class="nav-item" onclick="switchContent('work')">Work</div>
+            <div class="nav-item" onclick="switchContent('experience')">Experience</div>
+            <div class="nav-item" onclick="switchContent('about')">About</div>
+        </div>
+    </div>
+
+    <div id="p5canvas"></div>
+
+    <div class="content-wrapper">
+        <!-- 首页 -->
+        <div id="home-screen" class="section">
+            <div class="section-content">
+                <h1>Hi,</h1>
+                <p>This Is Winnie's Sketchbook.</p>
+            </div>
+        </div>
+        
+        <!-- Work 分区 -->
+        <div id="work-section" class="section">
+            <div class="section-content">
+                <p style="color: #888; font-size: 13px; letter-spacing: 2px;">「 点击泡泡，停留片刻。 」</p>
+            </div>
+            <div class="work-content-body">
+                <div class="work-group">
+                    <div class="group-header">
+                        <h2 class="group-title">Preparatory Research & Requirement Analysis</h2>
+                        <span class="group-tag">01 / Research</span>
+                    </div>
+                    <div class="horizontal-gallery">
+                        <div class="gallery-item large">
+                            <div class="img-box" style="padding: 0; overflow: hidden; display: flex; justify-content: center; align-items: center;">
+                                <img src=""C:\Users\巧克力\Desktop\新建文件夹\images\requirement.png.png"" alt="Requirement Analysis" style="width: 100%; height: 100%; object-fit: contain; border-radius: 2px;">
+                            </div>
+                        </div>
+                        <div class="gallery-item large">
+                            <div class="img-box" style="padding: 0; overflow: hidden; display: flex; justify-content: center; align-items: center;">
+                                <img src=""C:\Users\巧克力\Desktop\新建文件夹\images\competitor-analysis.png.png"" alt="Competitor Analysis" style="width: 100%; height: 100%; object-fit: contain; border-radius: 2px;">
+                            </div>
+                        </div>
+                        <div class="gallery-item large">
+                            <div class="img-box" style="padding: 0; overflow: hidden; display: flex; justify-content: center; align-items: center;">
+                                <img src=""C:\Users\巧克力\Desktop\新建文件夹\images\prd-screenshot.png.png"" alt="Product Requirement Document" style="width: 100%; height: 100%; object-fit: contain; border-radius: 2px;">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="gallery-link-wrapper">
+                        <a href="https://ccnmg56iyuvi.feishu.cn/wiki/JBR2wZ0AQimzVaksJDVctXoNn0g?from=from_copylink" target="_blank" class="gallery-link">查看完整 PRD 文档 →</a>
+                    </div>
+                </div>
+
+                <!-- 产品成品模块（已完美修复四张图一致） -->
+                <div class="work-group">
+                    <div class="group-header">
+                        <h2 class="group-title">Product Final Version</h2>
+                        <span class="group-tag">02 / Interface</span>
+                    </div>
+                    <div class="product-layout">
+                        <div class="horizontal-gallery">
+                            <div class="gallery-item phone">
+                              <img src=""C:\Users\巧克力\Pictures\Screenshots\屏幕截图 2026-06-09 111847.png"" alt="首页" style="width: 100%; height: 100%; object-fit: contain; border-radius: 2px;">
+                                <p class="phone-desc">首页</p>
+                            </div>
+                            <div class="gallery-item phone">
+                               <img src=""C:\Users\巧克力\Pictures\Screenshots\屏幕截图 2026-06-27 095151.png"" alt="编辑页" style="width: 100%; height: 100%; object-fit: contain; border-radius: 2px;">
+                                <p class="phone-desc">编辑页</p>
+                            </div>
+                            <div class="gallery-item phone">
+                               <img src=""C:\Users\巧克力\Pictures\Screenshots\屏幕截图 2026-06-09 112135.png"" alt="详情页" style="width: 100%; height: 100%; object-fit: contain; border-radius: 2px;">
+                                <p class="phone-desc">详情页</p>
+                            </div>
+                            <div class="gallery-item phone">
+                               <img src=""C:\Users\巧克力\Pictures\Screenshots\屏幕截图 2026-06-27 095352.png"" alt="用户页" style="width: 100%; height: 100%; object-fit: contain; border-radius: 2px;">
+                                <p class="phone-desc">用户页</p>
+                            </div>
+                        </div>
+
+                        <div class="story-wrapper">
+                            <p>那天夜里又看完了一本书，我习惯性地拿起手机，想记下些什么。明明脑海中翻涌着万般纷乱的思绪，却怎么也扯不出一个清晰的线头。我意识到，我需要一种方式，帮我把这些乱麻梳开。于是，我便决定自己动手把它做出来。</p>
+                            <p>起初，我并没有系统的产品经验。从边学边做地梳理需求，到写完第一版 PRD；在飞书上用画板画了简略的原型图，再转到 Axure 上做成正式的界面和交互。期间反复和 AI 推敲逻辑，最后通过 TRAE 完成了代码的实现。</p>
+                            <p>虽然目前产品的功能并不多，但最核心的那个功能已经实现了。作为自己的第一个用户，我很满意。</p>
+                            <p>GitHub、Axure 这些名字，我此前并不陌生，甚至专门抽时间啃过对应的课程。但直到自己真正坐回屏幕前，从零开始敲下第一行字、拖出第一个组件时，我才恍然大悟——听懂和会做之间，隔着一条巨大而沉默的河流。</p>
+                        </div>
+                    </div>
+                    
+                    <!-- 使用产品体验按钮 -->
+                    <div class="gallery-link-wrapper">
+                        <a href="https://chocolatewin.github.io/PM-Portfolio/" target="_blank" class="gallery-link">使用产品体验 →</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Experience 分区 -->
+        <div id="experience-section" class="section">
+            <div class="section-content">
+                <p style="color: #888; font-size: 13px; letter-spacing: 2px;">「 泳池里游曳的词汇，记述过往的痕迹 」</p>
+            </div>
+            <div class="experience-content-body">
+                <div class="timeline-container">
+
+                    <!-- 经历 1：2024.10 · 猎头实习 -->
+                    <div class="timeline-item">
+                        <div class="timeline-time">2024.10</div>
+                        <div class="timeline-dot"></div>
+                        <div class="timeline-content">
+                            <div class="timeline-header">
+                                <h3 class="company-name">猎头实习</h3>
+                                <p class="role-title">招聘实习生</p>
+                            </div>
+                            <ul class="job-details">
+                                <li><strong>全链路招聘支持：</strong> 参与多领域岗位招聘，深入分析 JD，构建精准人才画像，把控简历匹配度。</li>
+                                <li><strong>自我驱动与复盘习惯：</strong> 坚持每日撰写工作日报进行复盘，形成“快速执行-数据反思-策略迭代”的工作闭环。</li>
+                                <li><strong>市场洞察：</strong> 深入认知就业市场与行业趋势，锻炼了快速提炼复杂信息及整合资料的能力。</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <!-- 经历 2：2024.11 — 至今 · 个人小红书账号 -->
+                    <div class="timeline-item">
+                        <div class="timeline-time">2024.11 — 至今</div>
+                        <div class="timeline-dot"></div>
+                        <div class="timeline-content">
+                            <div class="timeline-header">
+                                <h3 class="company-name">个人小红书账号</h3>
+                                <p class="role-title">个人博主</p>
+                            </div>
+                            <ul class="job-details">
+                                <li><strong>个人 IP 与爆款打造：</strong> 独立运营个人小红书账号，专注垂直领域深耕。积累 1600+ 粉丝，获 3.0 万赞与收藏，产出多篇平台级爆款笔记。</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <!-- 经历 3：2024.12 - 2025.01 · 网易 -->
+                    <div class="timeline-item">
+                        <div class="timeline-time">2024.12 — 2025.01</div>
+                        <div class="timeline-dot"></div>
+                        <div class="timeline-content">
+                            <div class="timeline-header">
+                                <h3 class="company-name">网易</h3>
+                                <p class="role-title">小红书实习生</p>
+                            </div>
+                            <ul class="job-details">
+                                <li><strong>内容创作与高效执行：</strong> 专注高中学习领域，每日产出高质量图文笔记，入职笔试以出色内容质量与创意封面脱颖而出，审核一次性通过率高。</li>
+                                <li><strong>数据驱动优化：</strong> 系统学习小红书运营 SOP，基于用户反馈与数据表现，形成精准选题、执行、优化的闭环，持续提升笔记品质。</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <!-- 经历 4：2025.07 - 2025.09 · 去哪儿网 -->
+                    <div class="timeline-item">
+                        <div class="timeline-time">2025.07 — 2025.09</div>
+                        <div class="timeline-dot"></div>
+                        <div class="timeline-content">
+                            <div class="timeline-header">
+                                <h3 class="company-name">去哪儿网</h3>
+                                <p class="role-title">小红书运营实习生</p>
+                            </div>
+                            <ul class="job-details">
+                                <li><strong>双赛道内容创作与运营：</strong> 负责意向流及获客组的内容产出，结合人群需求撰写原创图文，有效提升粉丝积累与曝光引流。</li>
+                                <li><strong>数据监控与复盘优化：</strong> 独立监控 8 个账号的日度数据，输出数据汇总与对标分析表格，反哺运营策略调整。</li>
+                                <li><strong>人群运营项目：</strong> 主导 20 多个细分人群的运营阵地搭建，梳理用户画像与内容模板，建立标签运营机制。</li>
+                                <li><strong>华东区域数据项目：</strong> 参与华东区域流量数据落地，梳理数据流程 SOP，提取多城市景点及搜索词清单，支撑决策。</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <!-- 经历 5：2025.12 - 2026.03 · 策略增长实习生 -->
+                    <div class="timeline-item">
+                        <div class="timeline-time">2025.12 — 2026.03</div>
+                        <div class="timeline-dot"></div>
+                        <div class="timeline-content">
+                            <div class="timeline-header">
+                                <h3 class="company-name">策略增长实习生</h3>
+                                <p class="role-title">增长策略实习生</p>
+                            </div>
+                            <ul class="job-details">
+                                <li><strong>网站体验与转化优化：</strong> 负责官网全量走查与合规重构。将品牌故事融入核心交互路径，设计权限分层机制并优化下载动线，有效缩短转化路径，提升官网线索留资率。</li>
+                                <li><strong>AI 内容验收与业务纠偏：</strong> 深度参与 AI 自动化生成 B2B 行业文章的验收流程。基于 <strong>EEAT</strong> 内容质量评估标准，结合 7 维度自查机制对 AI 产出进行审核。向技术团队提出“前置协议约束”优化方案，在 AI 生成源头植入业务约束，大幅降低后期人工修改率。</li>
+                                <li><strong>B2B 获客策略与 SOP 搭建：</strong> 从 0 到 1 搭建外呼自动化开发信 SOP，结合客户背调与决策人挖掘，利用 AI 定制化内容，统筹展会获客策略，建立评估模型，协同兼职团队沉淀高质量商机。</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+
+        <!-- About 分区 -->
+        <div id="about-section" class="section">
+            <div class="section-content">
+                <p style="color: #888; font-size: 13px; letter-spacing: 2px;">「 点击波浪，让线条轻轻波动 」</p>
+            </div>
+            <div class="about-content-body">
+                <div class="envelope-container">
+                    
+                    <!-- 纯中文全文 -->
+                    <h2>Hi，见字如面。</h2>
+                    <p>上大学以后，课业压力没那么大了，空余的时间让我有更多机会去尝试和了解自己。阅读、看剧、旅游、吃好吃的、做手账……都成了我生活里很自然的一部分。</p>
+                    <p>最近我又发现了一个新乐趣：用 p5.js 做动效。为了做这个网站，我先后试了房子、杯子、瀑布等各种效果，Vibecoding 一版又一版地改，最后才挑出几个色调比较搭的，组成了现在页面里的一部分。</p>
+                    <p>我感觉做这个和做 Photoshop 海报有点共通，都是那种把元素一点点排布出来的过程。我本身就挺喜欢这种创造和排版的感觉，所以最近又重新开始做起手账。看到那些好看的胶带，哪怕不贴，光是摆着翻一翻，心情也很好。</p>
+                    <p>拼贴最自由的地方在于它没有风格的束缚。复古、盐系、韩系、简约……这些都只是一个标签而已。真正拿起镊子开始拼贴的时候，很容易就能进入心流状态。因为它真的没有任何压力，你只需要贴就好了。贴错了或者贴得不满意，轻轻一揭，本子又回到了上一步，随时可以重来。</p>
+                    <p>未来的未来，我想我还是会继续这样慢慢探索下去。</p>
+
+                    <!-- 纯英文全文 -->
+                    <h2>Hi, nice to "meet" you through these words.</h2>
+                    <p>Since entering college, the academic pressure has eased, giving me more free time to explore and understand myself. Reading, binge-watching shows, traveling, enjoying good food, and journaling have all become a natural part of my daily life.</p>
+                    <p>Recently, I've discovered a new hobby: creating animations with p5.js. To build this website, I experimented with various effects—houses, cups, waterfalls, and more. Through continuous "Vibecoding" and endless revisions, I finally selected a few with harmonious color schemes to form the current part of this page.</p>
+                    <p>I find this process somewhat similar to making Photoshop posters—it's all about arranging elements little by little. I've always enjoyed this feeling of creation and layout, which is why I recently picked up journaling again. Just looking at those beautiful tapes, even without sticking them on, flipping through them is enough to brighten my mood.</p>
+                    <p>The most liberating part of collaging is that it’s free from the constraints of any particular style. Retro, salt-style, Korean-style, minimalist... they are just labels. Once you actually pick up the tweezers and start collaging, it's easy to slip into a state of flow. Because there's really no pressure—you just need to stick. If you make a mistake or aren't satisfied, you can gently peel it off and go back a step, ready to start over at any time.</p>
+                    <p>In the future, I think I will continue to explore life at this slow and steady pace.</p>
+
+                    <div class="letter-divider"></div>
+
+                    <div class="letter-signature">
+                        <p>剩下的，留给下一次翻阅。<br>Let's Flip Through It.</p>
+                    </div>
+
+                    <div class="sticker-container">
+                        <div class="sticker sticker-1">☕️</div>
+                        <div class="sticker sticker-2">🐈</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="footer-cta">Let's Flip Through It.</div>
+
+    <script>
+        function switchContent(id) {
+            let targetId = id === 'home' ? 'home-screen' : id + '-section';
+            document.getElementById(targetId).scrollIntoView({ behavior: 'smooth' });
+            document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+            document.querySelector(`.nav-item[onclick="switchContent('${id}')"]`).classList.add('active');
+        }
+
+        const sections = document.querySelectorAll('.section');
+        const navItems = document.querySelectorAll('.nav-item');
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if(entry.isIntersecting) {
+                    const targetId = entry.target.id;
+                    let id = targetId === 'home-screen' ? 'home' : targetId.replace('-section', '');
+                    navItems.forEach(item => item.classList.remove('active'));
+                    navItems.forEach(item => {
+                        if(item.getAttribute('onclick') === `switchContent('${id}')`) {
+                            item.classList.add('active');
+                        }
+                    });
+                    if(typeof setP5Mode === 'function') setP5Mode(id);
+                }
+            });
+        }, { threshold: 0.3 });
+        sections.forEach(section => observer.observe(section));
+    </script>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.6.0/p5.min.js"></script>
+    <script>
+        let currentMode = 'home';
+        const BG_COLOR = [242, 244, 246]; 
+
+        function setP5Mode(mode) { currentMode = mode; }
+
+        const RAIN_COLOR = [30, 130, 210]; const RAIN_COUNT = 130; 
+        let raindrops = []; let ripples = [];
+
+        let font; let points = []; let bubbles = [];
+        
+        let wordFishes = [];
+        let wordPool = ["Rain", "Flow", "Still", "Echo", "Drift", "Sky", "Blue", "Quiet", "Move", "Light", "Wish", "Dream", "Deep", "Soft", "Wave", "Shimmer", "Cloud", "Drop", "Ripple", "Breathe", "Wind", "Grace", "Silent", "Memory"];
+
+        let waveLines = [];
+        let waveSpacing = 30; let waveOffset = 20; let waveHeight = 10; let wavesInitialized = false;
+
+        function preload() {
+            font = loadFont("https://cdnjs.cloudflare.com/ajax/libs/topcoat/0.8.0/font/SourceCodePro-Regular.otf");
+        }
+
+        function initWaves() {
+            waveLines = []; for (let y = 0; y < height; y += waveSpacing) { waveLines.push({ y: y, distortStrength: 0 }); }
+            wavesInitialized = true;
+        }
+
+        function setup() {
+            let canvas = createCanvas(800, 600);
+            canvas.parent('p5canvas');
+            background(BG_COLOR[0], BG_COLOR[1], BG_COLOR[2]);
+
+            for (let i = 0; i < RAIN_COUNT; i++) raindrops.push(new RainDrop());
+
+            let fontSize = 200;
+            points = font.textToPoints("HELLO", 100, height / 2, fontSize, { sampleFactor: 0.1, simplifyThreshold: 0 });
+            for (let i = 0; i < 350; i++) {
+                bubbles.push({ x: random(width), y: random(height), size: random(10, 40), speed: random(0.5, 2), opacity: random(100, 255), broken: false });
+            }
+
+            for (let i = 0; i < 30; i++) {
+                wordFishes.push(new SwimmingWord(random(wordPool), random(width), random(height)));
+            }
+            initWaves();
+        }
+
+        function draw() {
+            background(BG_COLOR[0], BG_COLOR[1], BG_COLOR[2]);
+
+            if (currentMode === 'home') drawRainMode();
+            else if (currentMode === 'work') drawWorkMode();
+            else if (currentMode === 'experience') drawExperienceMode();
+            else if (currentMode === 'about') drawAboutMode();
+        }
+
+        function drawRainMode() {
+            for (let i = raindrops.length - 1; i >= 0; i--) { let rd = raindrops[i]; rd.update(); rd.display(); }
+            for (let i = ripples.length - 1; i >= 0; i--) { let ripple = ripples[i]; ripple.update(); ripple.display(); if (ripple.isFinished()) ripples.splice(i, 1); }
+        }
+
+        function drawWorkMode() {
+            fill(200, 220, 255, 50); noStroke();
+            for (let pt of points) ellipse(pt.x, pt.y, 3);
+            for (let i = bubbles.length - 1; i >= 0; i--) {
+                let b = bubbles[i];
+                if (!b.broken) {
+                    noFill(); stroke(`rgba(135, 206, 235, ${b.opacity / 255})`); strokeWeight(2);
+                    ellipse(b.x, b.y, b.size);
+                    b.y -= b.speed; b.opacity -= 0.3;
+                    if (b.y < -b.size || b.opacity <= 0) resetBubble(b);
+                } else {
+                    b.size *= 0.95; b.opacity -= 5;
+                    if (b.size <= 1 || b.opacity <= 0) resetBubble(b);
+                }
+            }
+        }
+
+        function drawExperienceMode() {
+            background(210, 230, 248);
+            stroke(255, 255, 255, 50); strokeWeight(0.8);
+            for (let x = 0; x < width; x += 40) {
+                beginShape();
+                for (let y = 0; y < height; y += 5) {
+                    let noiseVal = noise(x * 0.01, y * 0.01, frameCount * 0.001) * 6 - 3;
+                    let xOff = x + noiseVal + sin(y * 0.02 + frameCount * 0.01) * 2;
+                    vertex(xOff, y);
+                }
+                endShape();
+            }
+            for (let y = 0; y < height; y += 40) {
+                beginShape();
+                for (let x = 0; x < width; x += 5) {
+                    let noiseVal = noise(x * 0.01, y * 0.01, frameCount * 0.001) * 6 - 3;
+                    let yOff = y + noiseVal + sin(x * 0.02 + frameCount * 0.01) * 2;
+                    vertex(x, yOff);
+                }
+                endShape();
+            }
+            for (let word of wordFishes) { word.update(); word.display(); }
+        }
+
+        function drawAboutMode() {
+            if (!wavesInitialized || waveLines.length === 0) initWaves();
+            background(240, 248, 255);
+            stroke(135, 206, 250); strokeWeight(2); noFill();
+            for (let i = 0; i < waveLines.length; i++) {
+                let wave = waveLines[i]; beginShape();
+                for (let x = 0; x < width; x += waveOffset) {
+                    let baseDistortion = sin(x * 0.02 + frameCount * 0.02) * waveHeight + noise(x * 0.05, wave.y * 0.05, frameCount * 0.01) * waveHeight;
+                    let additionalDistortion = wave.distortStrength * sin(x * 0.1 + frameCount * 0.05);
+                    let yOffset = wave.y + baseDistortion + additionalDistortion;
+                    vertex(x, yOffset);
+                }
+                endShape();
+                if (wave.distortStrength > 0) { wave.distortStrength *= 0.95; if (wave.distortStrength < 0.01) wave.distortStrength = 0; }
+            }
+        }
+
+        function resetBubble(b) { b.x = random(width); b.y = height + random(50, 300); b.size = random(10, 40); b.speed = random(0.5, 2); b.opacity = random(100, 255); b.broken = false; }
+
+        function mousePressed() {
+            if (currentMode === 'work') {
+                for (let i = bubbles.length - 1; i >= 0; i--) {
+                    let b = bubbles[i];
+                    if (dist(mouseX, mouseY, b.x, b.y) < b.size / 2) { b.broken = true; break; }
+                }
+            } else if (currentMode === 'about') {
+                let clickedLineIndex = Math.floor(mouseY / waveSpacing);
+                if (clickedLineIndex >= 0 && clickedLineIndex < waveLines.length) {
+                    waveLines[clickedLineIndex].distortStrength = 20;
+                }
+            }
+        }
+
+        class Ripple {
+            constructor(x, y) { this.x = x; this.y = y; this.age = 0; this.maxAge = 30; this.rings = []; for (let i = 0; i < floor(random(2, 5)); i++) { this.rings.push({ radius: random(4, 10) + i * 3, speed: random(0.8, 1.6), dx: random(-3, 3), dy: random(-3, 3), scaleX: random(0.8, 1.2), scaleY: random(0.4, 0.7) }); } }
+            update() { this.age++; for (let ring of this.rings) ring.radius += ring.speed * 0.8; }
+            isFinished() { return this.age >= this.maxAge; }
+            display() { let alpha = 255 * (1 - this.age / this.maxAge); if (alpha < 5) return; for (let ring of this.rings) { push(); translate(this.x + ring.dx, this.y + ring.dy); noFill(); stroke(RAIN_COLOR[0], RAIN_COLOR[1], RAIN_COLOR[2], alpha); strokeWeight(1.2); ellipse(0, 0, ring.radius * 2 * ring.scaleX, ring.radius * 2 * ring.scaleY); pop(); } }
+        }
+        class RainDrop {
+            constructor() { this.x = random(10, width - 10); this.y = random(-100, height * 0.5); this.len = random(100, 220); this.speed = random(4.0, 7.0); this.currentSpeed = this.speed; this.groundY = random(height - 200, height - 15); this.hasTriggered = false; }
+            reset() { this.x = random(10, width - 10); this.y = random(-100, -20); this.len = random(100, 220); this.speed = random(4.0, 7.0); this.currentSpeed = this.speed; this.groundY = random(height - 200, height - 15); this.hasTriggered = false; }
+            update() { let oldY = this.y; let d = dist(mouseX, mouseY, this.x, this.y); if (currentMode === 'home') { if (d < 120) { if (this.currentSpeed > -this.speed * 1.5) this.currentSpeed -= 0.2; } else { if (this.currentSpeed < this.speed) this.currentSpeed += 0.1; } } this.y += this.currentSpeed; if (!this.hasTriggered && oldY < this.groundY && this.y >= this.groundY) { ripples.push(new Ripple(this.x, this.groundY)); this.hasTriggered = true; this.reset(); } if (this.y > height + 30) this.reset(); }
+            display() { push(); translate(this.x, this.y); rotate(0.0); stroke(RAIN_COLOR[0], RAIN_COLOR[1], RAIN_COLOR[2], 190); strokeWeight(1.6); line(0, 0, 0, -this.len); pop(); }
+        }
+        class SwimmingWord {
+            constructor(txt, x, y) {
+                this.txt = txt; this.x = x; this.y = y;
+                this.vx = random(-0.3, 0.3); this.vy = random(-0.3, 0.3);
+                this.size = random(10, 14); this.col = color(90, 140, 190, 200);
+                this.targetX = x; this.targetY = y;
+            }
+            update() {
+                let distToTarget = dist(this.x, this.y, this.targetX, this.targetY);
+                if (distToTarget < 30 || frameCount % 200 === 0) { this.targetX = random(20, width - 20); this.targetY = random(20, height - 20); }
+                let dx = this.targetX - this.x; let dy = this.targetY - this.y;
+                this.vx += dx * 0.005; this.vy += dy * 0.005;
+                this.vx *= 0.98; this.vy *= 0.98;
+                this.vx = constrain(this.vx, -0.8, 0.8); this.vy = constrain(this.vy, -0.8, 0.8);
+                let mouseDist = dist(mouseX, mouseY, this.x, this.y);
+                if (mouseDist < 80) {
+                    let angle = atan2(this.y - mouseY, this.x - mouseX); let force = map(mouseDist, 0, 80, 0.8, 0);
+                    this.vx += cos(angle) * force * 0.3; this.vy += sin(angle) * force * 0.3;
+                }
+                this.x += this.vx; this.y += this.vy;
+                if (this.x < 10) this.vx = abs(this.vx); if (this.x > width - 10) this.vx = -abs(this.vx);
+                if (this.y < 10) this.vy = abs(this.vy); if (this.y > height - 10) this.vy = -abs(this.vy);
+            }
+            display() {
+                push(); translate(this.x, this.y);
+                let ctx = drawingContext; ctx.shadowBlur = 8; ctx.shadowColor = `rgba(80, 120, 180, 0.1)`;
+                noStroke(); fill(this.col); textSize(this.size); textAlign(CENTER, CENTER); textFont('Georgia'); text(this.txt, 0, 0);
+                ctx.shadowBlur = 0; pop();
+            }
+        }
+    </script>
+</body>
+</html>
